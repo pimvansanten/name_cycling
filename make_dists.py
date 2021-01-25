@@ -26,20 +26,27 @@ def prepare_gdf(json_file):
 def collect_routes(start_places):
 #start with first letter and find closest place with next letter
     routes={}
-    for _,row in start_places.iterrows():
+    for _,start_place in start_places.iterrows():
+        
         sub=naam_plaatsen.copy()
         # sub=sub.drop(sub.loc[sub['name']=='Emmaberg'].index)
-        route=row['name']
-        pos=row['geometry']
+        route=start_place['name']
+        last_place=start_place['geometry']
+        first_place=start_place['geometry']
         cumdist=0
         for nn in [t for t in naam[1:]]:
-            cumdist+=sub.loc[sub['capital']==nn].distance(pos).min()
-            index=sub.loc[sub['capital']==nn].distance(pos).idxmin()
+            double_distance=sub.loc[sub['capital']==nn].distance(last_place)\
+                +sub.loc[sub['capital']==nn].distance(first_place)
+            index=double_distance.idxmin()
+            cumdist+=sub.loc[index,'geometry'].distance(last_place)
             route+=f"_{naam_plaatsen.loc[index,'name']}"
-            pos=sub.loc[index,'geometry']
+            last_place=sub.loc[index,'geometry']
             sub=sub.drop(index=index)
-        routes[route]=cumdist    
-    return routes
+        cumdist+=first_place.distance(last_place)
+        routes[route]=cumdist
+    routes_df=pd.DataFrame.from_dict(routes, orient='index') 
+    routes_df=routes_df.sort_values(by=0)
+    return routes_df
 
 def get_closest_start_finish(naam):
     s=naam[0]
@@ -66,8 +73,6 @@ def places_in_circle(places):
         buf+=1000
     return lijst
 
-test=gek 
-min(routes.values())
 #plaatsen Limburg uit Nederland wiki pagina
 gdf=prepare_gdf('plaatsen.json')
 sub_gdf=gdf.copy()
@@ -78,17 +83,10 @@ sub_gdf=gdf.copy()
 #plaatsen Limburg uit Limburg wiki pagina
 # Lim_plaatsen=prepare_gdf('plaatsen_limburg.json')
 
-naam='Wilhelmus'.upper()
+naam='Hugo'.upper()
 naam_plaatsen = sub_gdf.loc[sub_gdf['capital'].isin([t for t in naam])]
-
-
-
 fl=naam[0]
 places=naam_plaatsen.loc[naam_plaatsen['capital']==fl]
-routes=collect_routes(pd.concat([lijst[0],naam_plaatsen.loc[naam_plaatsen['capital']=='L']]))
 routes=collect_routes(places)
-
-collect_routes(naam_plaatsen.loc[
-    naam_plaatsen['name']==get_closest_start_finish('Wilhelmus').split('_')[0]])
 
 
